@@ -7,16 +7,26 @@ from pathlib import Path
 
 from config import START_DATE, END_DATE, STATE, BATCH_DAYS, OUTPUT_PATH
 
-def fetch_batch(state: str, start: str, end: str) -> list:
+def fetch_batch(url: str, state: str, start: str, end: str, key: str, retries=5):
     params = {"state": state, "start": start, "end": end}
-    try:
-        resp = requests.get(BASE_URL, params=params, timeout=10)
-        resp.raise_for_status()
-        raw = resp.json()
-        return raw.get("Consumption-based Intensity (historical)", [])
-    except Exception as e:
-        print(f"Failed batch {start} to {end}: {e}")
-        return []
+    delay = 1
+    for attempt in range(retries):
+        try:
+            resp = requests.get(url, params=params, timeout=10)
+            resp.raise_for_status()
+            return resp.json().get(key, [])
+        except requests.exceptions.HTTPError as e:
+            if resp.status_code == 429:
+                time.sleep(delay)
+                delay *= 2
+            else:
+                print(f"HTTP error on batch {start} to {end} for {state}: {e}")
+                break
+        except Exception as e:
+            print(f"Error on batch {start} to {end} for {state}: {e}")
+            break
+    print(f"Failed after {retries} retries for batch {start} to {end} for {state}")
+    return []
 
 def daterange(start_date, end_date, step_days):
     current = start_date
