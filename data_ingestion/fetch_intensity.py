@@ -90,5 +90,35 @@ def fetch_and_save(
             print(f"No new data for {state}.")
 
 if __name__ == "__main__":
-    main()
+
+    consumption_url = urljoin(BASE_URL, CONSUMPTION_INTENSITY)
+    production_url = urljoin(BASE_URL, PRODUCTION_INTENSITY)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--start", type=str, default=DEFAULT_START_DATE)
+    parser.add_argument("--end", type=str, default=DEFAULT_END_DATE)
+    parser.add_argument(
+        "--mode",
+        choices=["consumption", "production", "both"],
+        default="both",
+        help="Which intensity data to fetch",
+    )
+    args = parser.parse_args()
+
+    if args.mode in ("consumption", "both"):
+        fetch_and_save(
+            consumption_url,
+            "Consumption-based Intensity (historical)",
+            "consumption",
+            args.start,
+            args.end,
+        )
+    if args.mode in ("production", "both"):
+        fetch_and_save(
+            production_url,
+            "Production-based Intensity (historical)",
+            "production",
+            args.start,
+            args.end,
+        )
 
