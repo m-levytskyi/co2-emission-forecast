@@ -1,11 +1,17 @@
+from pathlib import Path
+import sys
+import argparse
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
 from tqdm import tqdm
 import time
-from pathlib import Path
+from urllib.parse import urljoin
+import argparse
 
-from config import START_DATE, END_DATE, STATE, BATCH_DAYS, OUTPUT_PATH
+from config import BASE_URL, CONSUMPTION_INTENSITY, PRODUCTION_INTENSITY, STATE_CODES, BATCH_DAYS, DATA_DIR, DEFAULT_START_DATE, DEFAULT_END_DATE
+
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 def fetch_batch(url: str, state: str, start: str, end: str, key: str, retries=5):
     params = {"state": state, "start": start, "end": end}
@@ -35,28 +41,53 @@ def daterange(start_date, end_date, step_days):
         yield current, batch_end
         current = batch_end + timedelta(days=1)
 
-def main():
-    all_data = []
+def load_existing_csv(path: Path) -> pd.DataFrame:
+    if path.exists():
+        return pd.read_csv(path, parse_dates=["start"])
+    return pd.DataFrame()
 
-    start_dt = datetime.strptime(START_DATE, "%Y-%m-%d")
-    end_dt = datetime.strptime(END_DATE, "%Y-%m-%d")
+def fetch_and_save(
+    url: str,
+    key: str,
+    filename_suffix: str,
+    start_date_str: str,
+    end_date_str: str,
+):
+    start_dt = datetime.strptime(start_date_str, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date_str, "%Y-%m-%d")
 
-    for batch_start, batch_end in tqdm(daterange(start_dt, end_dt, BATCH_DAYS)):
-        batch_start_str = batch_start.strftime("%Y-%m-%d")
-        batch_end_str = batch_end.strftime("%Y-%m-%d")
+    for state in STATE_CODES:
+        print(f"\nFetching {filename_suffix} data for {state}...")
+        file_path = DATA_DIR / f"{state}_{filename_suffix}_intensity.csv"
+        existing_df = load_existing_csv(file_path)
+        fetched_rows = []
 
-        data = fetch_batch(STATE, batch_start_str, batch_end_str)
-        all_data.extend(data)
-        time.sleep(0.5)
+        for batch_start, batch_end in tqdm(daterange(start_dt, end_dt, BATCH_DAYS)):
+            batch_start_str = batch_start.strftime("%Y-%m-%d")
+            batch_end_str = batch_end.strftime("%Y-%m-%d")
 
-    if not all_data:
-        print("No data fetched.")
-        return
+            if not existing_df.empty:
+                existing_dates = existing_df["start"].dt.date
+                needed_dates = {
+                    (batch_start + timedelta(days=i)).date()
+                    for i in range((batch_end - batch_start).days + 1)
+                }
+                if needed_dates.issubset(existing_dates):
+                    continue
 
-    df = pd.DataFrame(all_data)
-    Path(OUTPUT_PATH).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUTPUT_PATH, index=False)
-    print(f"Saved {len(df)} records to {OUTPUT_PATH}")
+            data = fetch_batch(url, state, batch_start_str, batch_end_str, key)
+            fetched_rows.extend(data)
+            time.sleep(0.5)
+
+        if fetched_rows:
+            new_df = pd.DataFrame(fetched_rows)
+            combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+            combined_df.drop_duplicates(subset=["start"], inplace=True)
+            combined_df.sort_values(by="start", inplace=True)
+            combined_df.to_csv(file_path, index=False)
+            print(f"Saved {len(combined_df)} total records to {file_path}")
+        else:
+            print(f"No new data for {state}.")
 
 if __name__ == "__main__":
     main()
