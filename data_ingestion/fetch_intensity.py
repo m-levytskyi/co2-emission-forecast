@@ -5,12 +5,7 @@ from tqdm import tqdm
 import time
 from pathlib import Path
 
-BASE_URL = "https://api.co2map.de/ConsumptionIntensityHistorical/"
-STATE = "NW"
-START_DATE = "2022-01-01"
-END_DATE = "2022-12-31"
-BATCH_DAYS = 30
-OUTPUT_PATH = "data/raw/consumption_intensity_nw_2022.csv"
+from config import START_DATE, END_DATE, STATE, BATCH_DAYS, OUTPUT_PATH
 
 def fetch_batch(state: str, start: str, end: str) -> list:
     params = {"state": state, "start": start, "end": end}
