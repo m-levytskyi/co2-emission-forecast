@@ -13,24 +13,47 @@ from config import BASE_URL, CONSUMPTION_INTENSITY, PRODUCTION_INTENSITY, STATE_
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-def fetch_batch(url: str, state: str, start: str, end: str, key: str, retries=5):
+def fetch_batch(url: str, state: str, start: str, end: str, key: str, 
+                retries=5, base_delay=30.0, request_delay=1.0):
+    """
+    Simple rate-limited batch fetcher
+    
+    Args:
+        request_delay: Seconds to wait before each request (proactive rate limiting)
+        base_delay: Initial delay for retries after 429 errors
+    """
     params = {"state": state, "start": start, "end": end}
-    delay = 1
+    
+    # Proactive rate limiting - wait before making request
+    time.sleep(request_delay)
+    
+    delay = base_delay
     for attempt in range(retries):
         try:
-            resp = requests.get(url, params=params, timeout=10)
+            resp = requests.get(url, params=params, timeout=20)
             resp.raise_for_status()
             return resp.json().get(key, [])
+            
         except requests.exceptions.HTTPError as e:
             if resp.status_code == 429:
+                # Check if server provides retry-after header
+                retry_after = resp.headers.get('Retry-After')
+                if retry_after:
+                    try:
+                        delay = int(retry_after)
+                    except ValueError:
+                        pass
+                
                 time.sleep(delay)
-                delay *= 2
+                print(f"Rate limit exceeded, retrying in {delay} seconds...")
+                delay *= 2  # Exponential backoff
             else:
                 print(f"HTTP error on batch {start} to {end} for {state}: {e}")
                 break
         except Exception as e:
             print(f"Error on batch {start} to {end} for {state}: {e}")
             break
+    
     print(f"Failed after {retries} retries for batch {start} to {end} for {state}")
     return []
 
