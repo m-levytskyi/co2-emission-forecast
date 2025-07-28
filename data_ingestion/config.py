@@ -5,8 +5,19 @@ CONSUMPTION_INTENSITY = "ConsumptionIntensityHistorical/"
 PRODUCTION_INTENSITY = "ProductionIntensityHistorical/"
 
 STATE_CODES = [
-    "BW", "BY", "BE", "BB", "HB", "HH", "HE", "MV",
-    "NI", "NW", "RP", "SL", "SN", "ST", "SH", "TH"
+    "BW",  # Baden-Wuerttemberg  
+    "BY",  # Bavaria  
+    "BB",  # Brandenburg and Berlin  
+    "HE",  # Hesse  
+    "MV",  # Mecklenburg-Western Pomerania  
+    "NI",  # Lower Saxony and Bremen  
+    "NW",  # North Rhine-Westphalia  
+    "RP",  # Rhineland-Palatinate  
+    "SL",  # Saarland  
+    "SN",  # Saxony  
+    "ST",  # Saxony-Anhalt  
+    "SH",  # Schleswig-Holstein and Hamburg  
+    "TH"   # Thuringia  
 ]
 
 DEFAULT_START_DATE = "2022-01-01"
