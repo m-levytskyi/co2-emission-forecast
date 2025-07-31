@@ -65,9 +65,8 @@ def daterange(start_date, end_date, step_days):
         current = batch_end + timedelta(days=1)
 
 def load_existing_csv(path: Path) -> pd.DataFrame:
-    if path.exists():
-        return pd.read_csv(path, parse_dates=["start"])
-    return pd.DataFrame()
+    if not path.exists():
+        return pd.DataFrame()
 
 def fetch_and_save(
     url: str,
