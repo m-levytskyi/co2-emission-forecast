@@ -10,6 +10,7 @@ xgboost = "*"
 tqdm = "*"
 pyarrow = "*"
 requests = "*"
+codecarbon = "*"
 
 [dev-packages]
 
