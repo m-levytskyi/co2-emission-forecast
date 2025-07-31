@@ -68,6 +68,16 @@ def load_existing_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
 
+    with open(path, 'r') as f:
+        return pd.read_csv(
+            path,
+            header=None,
+            names=["timestamp", "value"],
+            parse_dates=["timestamp"],
+            skiprows=1
+        )
+
+
 def fetch_and_save(
     url: str,
     key: str,
@@ -104,8 +114,12 @@ def fetch_and_save(
         if fetched_rows:
             new_df = pd.DataFrame(fetched_rows)
             combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-            combined_df.drop_duplicates(subset=["start"], inplace=True)
-            combined_df.sort_values(by="start", inplace=True)
+            if not combined_df.empty and "start" in combined_df.columns:
+                combined_df.drop_duplicates(subset=["start"], inplace=True)
+                combined_df.sort_values(by="start", inplace=True)
+            else:
+                print(f"Skipping duplicate removal: DataFrame empty or missing 'start' column for state {state}")
+
             combined_df.to_csv(file_path, index=False)
             print(f"Saved {len(combined_df)} total records to {file_path}")
         else:
