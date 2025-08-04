@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  co2-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+    volumes:
+      - ./mlruns:/app/mlruns:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  mlflow:
+    build: .
+    command: mlflow ui --host 0.0.0.0 --port 5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+    environment:
+      - MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+    restart: unless-stopped
