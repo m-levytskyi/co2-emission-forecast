@@ -17,7 +17,9 @@ RUN pip install pipenv && \
 # Copy source code
 COPY deployment/ ./deployment/
 COPY experiments/ ./experiments/
-COPY mlruns/ ./mlruns/
+
+# Create MLflow artifacts directory
+RUN mkdir -p mlruns
 
 # Expose port
 EXPOSE 8000
