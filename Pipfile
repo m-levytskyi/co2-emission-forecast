@@ -11,8 +11,13 @@ tqdm = "*"
 pyarrow = "*"
 requests = "*"
 codecarbon = "*"
+mlflow = "*"
+scikit-learn = "*"
+fastapi = "*"
+uvicorn = "*"
 
 [dev-packages]
+pytest = "*"
 
 [requires]
 python_version = "3.10"
