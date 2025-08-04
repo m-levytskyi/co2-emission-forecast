@@ -4,7 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-dvc = "*"
 pandas = "*"
 xgboost = "*"
 tqdm = "*"
@@ -15,6 +14,7 @@ mlflow = "*"
 scikit-learn = "*"
 fastapi = "*"
 uvicorn = "*"
+dvc = "*"
 
 [dev-packages]
 pytest = "*"
