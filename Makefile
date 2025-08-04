@@ -43,6 +43,26 @@ test-unit:
 test-integration:
 	pipenv run pytest tests/test_api.py -v
 
+# Code quality targets
+format:
+	pipenv run black .
+	pipenv run isort .
+
+lint:
+	pipenv run flake8 .
+
+check:
+	pipenv run black --check .
+	pipenv run isort --check-only .
+	pipenv run flake8 .
+
+# Pre-commit targets
+pre-commit-install:
+	pipenv run pre-commit install
+
+pre-commit-run:
+	pipenv run pre-commit run --all-files
+
 # Monitoring targets
 monitor:
 	pipenv run python monitoring/monitor.py
@@ -69,6 +89,11 @@ help:
 	@echo "  test              - Run all tests"
 	@echo "  test-unit         - Run unit tests"
 	@echo "  test-integration  - Run integration tests"
+	@echo "  format            - Format code with black and isort"
+	@echo "  lint              - Run flake8 linter"
+	@echo "  check             - Check code formatting and linting"
+	@echo "  pre-commit-install- Install pre-commit hooks"
+	@echo "  pre-commit-run    - Run pre-commit on all files"
 	@echo "  monitor           - Run monitoring checks"
 	@echo "  pipeline          - Run full MLOps pipeline"
 	@echo "  docker-build      - Build Docker image"

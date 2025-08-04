@@ -4,12 +4,12 @@ MODEL_NAME = "co2-intensity-xgboost"
 
 # Model parameters
 XGBOOST_PARAMS = {
-    'n_estimators': 100,
-    'max_depth': 6,
-    'learning_rate': 0.1,
-    'subsample': 0.8,
-    'colsample_bytree': 0.8,
-    'random_state': 42
+    "n_estimators": 100,
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "random_state": 42,
 }
 
 # Feature engineering

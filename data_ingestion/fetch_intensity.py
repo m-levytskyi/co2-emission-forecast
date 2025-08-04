@@ -1,31 +1,49 @@
-from pathlib import Path
-import sys
 import argparse
-import requests
-import pandas as pd
-from datetime import datetime, timedelta
-from tqdm import tqdm
+import sys
 import time
+from datetime import datetime, timedelta
+from pathlib import Path
 from urllib.parse import urljoin
 
-from config import BASE_URL, CONSUMPTION_INTENSITY, PRODUCTION_INTENSITY, STATE_CODES, BATCH_DAYS, DATA_DIR, DEFAULT_START_DATE, DEFAULT_END_DATE
+import pandas as pd
+import requests
+from config import (
+    BASE_URL,
+    BATCH_DAYS,
+    CONSUMPTION_INTENSITY,
+    DATA_DIR,
+    DEFAULT_END_DATE,
+    DEFAULT_START_DATE,
+    PRODUCTION_INTENSITY,
+    STATE_CODES,
+)
+from tqdm import tqdm
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-def fetch_batch(url: str, state: str, start: str, end: str, key: str, 
-                retries=5, base_delay=30.0, request_delay=1.0):
+
+def fetch_batch(
+    url: str,
+    state: str,
+    start: str,
+    end: str,
+    key: str,
+    retries=5,
+    base_delay=30.0,
+    request_delay=1.0,
+):
     """
     Simple rate-limited batch fetcher
-    
+
     Args:
         request_delay: Seconds to wait before each request (proactive rate limiting)
         base_delay: Initial delay for retries after 429 errors
     """
     params = {"state": state, "start": start, "end": end}
-    
+
     # Proactive rate limiting - wait before making request
     time.sleep(request_delay)
-    
+
     delay = base_delay
     for attempt in range(retries):
         resp = None
@@ -33,17 +51,17 @@ def fetch_batch(url: str, state: str, start: str, end: str, key: str,
             resp = requests.get(url, params=params, timeout=20)
             resp.raise_for_status()
             return resp.json().get(key, [])
-            
+
         except requests.exceptions.HTTPError as e:
             if resp and resp.status_code == 429:
                 # Check if server provides retry-after header
-                retry_after = resp.headers.get('Retry-After')
+                retry_after = resp.headers.get("Retry-After")
                 if retry_after:
                     try:
                         delay = int(retry_after)
                     except ValueError:
                         pass
-                
+
                 time.sleep(delay)
                 print(f"Rate limit exceeded, retrying in {delay} seconds...")
                 delay *= 2  # Exponential backoff
@@ -53,9 +71,10 @@ def fetch_batch(url: str, state: str, start: str, end: str, key: str,
         except Exception as e:
             print(f"Error on batch {start} to {end} for {state}: {e}")
             break
-    
+
     print(f"Failed after {retries} retries for batch {start} to {end} for {state}")
     return []
+
 
 def daterange(start_date, end_date, step_days):
     current = start_date
@@ -64,21 +83,22 @@ def daterange(start_date, end_date, step_days):
         yield current, batch_end
         current = batch_end + timedelta(days=1)
 
+
 def load_existing_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
 
     df = pd.read_csv(path, index_col=False)
-    
+
     # Handle legacy format with numeric column names or wrong headers
-    if list(df.columns) == ['0', '1'] or df.columns[0] == '0':
-        df.columns = ['timestamp', 'value']
-    elif len(df.columns) == 2 and df.columns[0] != 'timestamp':
-        df.columns = ['timestamp', 'value']
-    
+    if list(df.columns) == ["0", "1"] or df.columns[0] == "0":
+        df.columns = ["timestamp", "value"]
+    elif len(df.columns) == 2 and df.columns[0] != "timestamp":
+        df.columns = ["timestamp", "value"]
+
     # Convert timestamp to datetime
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+
     return df
 
 
@@ -118,7 +138,7 @@ def fetch_and_save(
         if fetched_rows:
             new_df = pd.DataFrame(fetched_rows, columns=["timestamp", "value"])
             new_df["timestamp"] = pd.to_datetime(new_df["timestamp"])
-            
+
             combined_df = pd.concat([existing_df, new_df], ignore_index=True)
             if not combined_df.empty:
                 combined_df.drop_duplicates(subset=["timestamp"], inplace=True)
@@ -128,6 +148,7 @@ def fetch_and_save(
             print(f"Saved {len(combined_df)} total records to {file_path}")
         else:
             print(f"No new data for {state}.")
+
 
 if __name__ == "__main__":
 
@@ -161,4 +182,3 @@ if __name__ == "__main__":
             args.start,
             args.end,
         )
-
