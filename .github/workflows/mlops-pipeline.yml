@@ -45,7 +45,7 @@ jobs:
     
     - name: Build Docker image
       run: |
-        docker build -t co2-forecast-api:${{ github.sha }} .
+        docker build -f deployment/Dockerfile -t co2-forecast-api:${{ github.sha }} .
         docker tag co2-forecast-api:${{ github.sha }} co2-forecast-api:latest
     
     - name: Save Docker image
