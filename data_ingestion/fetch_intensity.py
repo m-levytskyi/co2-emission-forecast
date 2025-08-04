@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from tqdm import tqdm
 import time
 from urllib.parse import urljoin
-import argparse
 
 from config import BASE_URL, CONSUMPTION_INTENSITY, PRODUCTION_INTENSITY, STATE_CODES, BATCH_DAYS, DATA_DIR, DEFAULT_START_DATE, DEFAULT_END_DATE
 
@@ -29,13 +28,14 @@ def fetch_batch(url: str, state: str, start: str, end: str, key: str,
     
     delay = base_delay
     for attempt in range(retries):
+        resp = None
         try:
             resp = requests.get(url, params=params, timeout=20)
             resp.raise_for_status()
             return resp.json().get(key, [])
             
         except requests.exceptions.HTTPError as e:
-            if resp.status_code == 429:
+            if resp and resp.status_code == 429:
                 # Check if server provides retry-after header
                 retry_after = resp.headers.get('Retry-After')
                 if retry_after:
@@ -68,14 +68,18 @@ def load_existing_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
 
-    with open(path, 'r') as f:
-        return pd.read_csv(
-            path,
-            header=None,
-            names=["timestamp", "value"],
-            parse_dates=["timestamp"],
-            skiprows=1
-        )
+    df = pd.read_csv(path, index_col=False)
+    
+    # Handle legacy format with numeric column names or wrong headers
+    if list(df.columns) == ['0', '1'] or df.columns[0] == '0':
+        df.columns = ['timestamp', 'value']
+    elif len(df.columns) == 2 and df.columns[0] != 'timestamp':
+        df.columns = ['timestamp', 'value']
+    
+    # Convert timestamp to datetime
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    
+    return df
 
 
 def fetch_and_save(
@@ -99,7 +103,7 @@ def fetch_and_save(
             batch_end_str = batch_end.strftime("%Y-%m-%d")
 
             if not existing_df.empty:
-                existing_dates = existing_df["start"].dt.date
+                existing_dates = existing_df["timestamp"].dt.date
                 needed_dates = {
                     (batch_start + timedelta(days=i)).date()
                     for i in range((batch_end - batch_start).days + 1)
@@ -112,13 +116,13 @@ def fetch_and_save(
             time.sleep(0.5)
 
         if fetched_rows:
-            new_df = pd.DataFrame(fetched_rows)
+            new_df = pd.DataFrame(fetched_rows, columns=["timestamp", "value"])
+            new_df["timestamp"] = pd.to_datetime(new_df["timestamp"])
+            
             combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-            if not combined_df.empty and "start" in combined_df.columns:
-                combined_df.drop_duplicates(subset=["start"], inplace=True)
-                combined_df.sort_values(by="start", inplace=True)
-            else:
-                print(f"Skipping duplicate removal: DataFrame empty or missing 'start' column for state {state}")
+            if not combined_df.empty:
+                combined_df.drop_duplicates(subset=["timestamp"], inplace=True)
+                combined_df.sort_values(by="timestamp", inplace=True)
 
             combined_df.to_csv(file_path, index=False)
             print(f"Saved {len(combined_df)} total records to {file_path}")
